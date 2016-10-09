@@ -9,7 +9,7 @@ use Mix.Config
 # kept out of version control and might be hard to recover
 # or recreate for your teammates (or you later on).
 config :rumbl, Rumbl.Endpoint,
-  secret_key_base: "tYq8RKgEcIkGUwWXnJb2nGWT3ShZ+cKa+eFM+Azi+AAjjXirz20JqK2qXkwO4FIe"
+  secret_key_base: "iLNMXCUnKO4n8ThCtyxnj6t4UxqEBDYurDmQ5kDOQb0a5iKGjnCjmmOF0WdUOO3V"
 
 # Configure your database
 config :rumbl, Rumbl.Repo,
