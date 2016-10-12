@@ -43,6 +43,7 @@ defmodule InfoSysTest do
     refute_received :timeout
   end
 
+  @tag :capture_log
   test "compute/2 discards backend errors" do
     assert InfoSys.compute("boom", backends: [TestBackend]) == []
     refute_received {:DOWN, _, _, _}
