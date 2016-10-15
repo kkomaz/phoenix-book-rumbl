@@ -18,6 +18,9 @@ import Video from "./video"
 
 Video.init(socket, document.getElementById("video"))
 
+const helloDiv = document.getElementById('elm-hello')
+const helloApp = Elm.Hello.embed(helloDiv)
+
 // Import local files
 //
 // Local files can be imported directly using relative
