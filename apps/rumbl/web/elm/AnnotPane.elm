@@ -8,18 +8,23 @@ import Html.Attributes exposing (..)
 
 import Html.App as App
 import Time
-import Phoenix.Socket
+import Phoenix.Socket as PSocket
+import Phoenix.Channel as PChannel
 
 
--- import Phoenix.Channel
 -- import Phoenix.Push
+
+import Json.Encode as JE
+import Json.Decode as JD exposing ((:=))
+
+
 -- model
 
 
 type alias Model =
     { annots : List Annot
     , inputMessage : String
-    , phxSocket : Phoenix.Socket.Socket Msg
+    , phxSocket : PSocket.Socket Msg
     }
 
 
@@ -35,7 +40,7 @@ initModel =
     ( Model
         []
         ""
-        (Phoenix.Socket.init "ws://localhost:4000/socket/websocket")
+        (PSocket.init "ws://localhost:4000/socket/websocket")
     , Cmd.none
     )
 
@@ -45,20 +50,25 @@ initModel =
 
 
 type Msg
-    = Received Annot
+    = Received (List Annot)
+    | ReceivedOne Annot
     | Post String
     | Timeout Float
     | CurTime Int
     | InitSocket String
     | JoinChannel String
-    | PhoenixMsg (Phoenix.Socket.Msg Msg)
+    | PhoenixMsg (PSocket.Msg Msg)
+    | Noop
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Received annot ->
-            ( model, Cmd.none )
+        Received annots ->
+            ( { model | annots = annots }, Cmd.none )
+
+        ReceivedOne annot ->
+            ( { model | annots = annot :: model.annots }, Cmd.none )
 
         Post text ->
             ( model, Cmd.none )
@@ -76,22 +86,71 @@ update msg model =
 
         InitSocket path ->
             ( { model
-                | phxSocket = (Phoenix.Socket.init path |> Phoenix.Socket.withDebug)
+                | phxSocket = (PSocket.init path |> PSocket.withDebug)
               }
             , Cmd.none
             )
 
         JoinChannel channel ->
-            ( model, Cmd.none )
-
-        PhoenixMsg msg ->
             let
+                pChannel =
+                    PChannel.init (Debug.log "Channel" channel)
+                        |> PChannel.onJoin onReceiveJoin
+
+                pSocket =
+                    model.phxSocket
+                        |> PSocket.on "new_annotation"
+                            channel
+                            onReceiveAnnot
+
                 ( socket, phxCmd ) =
-                    Phoenix.Socket.update msg model.phxSocket
+                    PSocket.join pChannel pSocket
             in
                 ( { model | phxSocket = socket }
                 , Cmd.map PhoenixMsg phxCmd
                 )
+
+        PhoenixMsg msg ->
+            let
+                ( socket, phxCmd ) =
+                    PSocket.update msg model.phxSocket
+            in
+                ( { model | phxSocket = socket }
+                , Cmd.map PhoenixMsg phxCmd
+                )
+
+        Noop ->
+            ( model, Cmd.none )
+
+
+onReceiveJoin : JE.Value -> Msg
+onReceiveJoin raw =
+    case JD.decodeValue decodeJoin (Debug.log "Raw" raw) of
+        Ok annots ->
+            Received annots
+
+        Err error ->
+            Received []
+
+
+onReceiveAnnot : JE.Value -> Msg
+onReceiveAnnot raw =
+    case JD.decodeValue decodeAnnot (Debug.log "Raw" raw) of
+        Ok annot ->
+            ReceivedOne annot
+
+        Err error ->
+            Noop
+
+
+decodeJoin : JD.Decoder (List Annot)
+decodeJoin =
+    JD.at [ "annotations" ] (JD.list decodeAnnot)
+
+
+decodeAnnot : JD.Decoder Annot
+decodeAnnot =
+    JD.object3 Annot ("at" := JD.int) (JD.at [ "user", "username" ] JD.string) ("body" := JD.string)
 
 
 
@@ -104,7 +163,8 @@ subscriptions model =
         [ Time.every Time.second Timeout
         , curTime CurTime
         , initSocket InitSocket
-        , Phoenix.Socket.listen model.phxSocket PhoenixMsg
+        , joinChannel JoinChannel
+        , PSocket.listen model.phxSocket PhoenixMsg
         ]
 
 
@@ -143,6 +203,7 @@ view model =
             , button [ class "btn btn-primary form-control", id "msg-submit", type' "submit" ]
                 [ text "Post" ]
             ]
+        , div [] [ text (toString model) ]
         ]
 
 
