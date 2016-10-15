@@ -2,10 +2,7 @@ port module AnnotPane exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-
-
--- import Html.Events exposing (..)
-
+import Html.Events exposing (..)
 import Html.App as App
 import Time
 import Phoenix.Socket as PSocket
@@ -23,7 +20,7 @@ import Json.Decode as JD exposing ((:=))
 
 type alias Model =
     { annots : List Annot
-    , inputMessage : String
+    , text : String
     , phxSocket : PSocket.Socket Msg
     }
 
@@ -52,6 +49,7 @@ initModel =
 type Msg
     = Received (List Annot)
     | ReceivedOne Annot
+    | Clicked Annot
     | Post String
     | Timeout Float
     | CurTime Int
@@ -69,6 +67,9 @@ update msg model =
 
         ReceivedOne annot ->
             ( { model | annots = annot :: model.annots }, Cmd.none )
+
+        Clicked annot ->
+            ( model, Cmd.none )
 
         Post text ->
             ( model, Cmd.none )
@@ -196,14 +197,51 @@ view model =
                 [ text "Annotations" ]
             ]
         , div [ class "panel-body annotations", id "msg-container" ]
-            []
+            (List.map
+                annotView
+                model.annots
+            )
         , div [ class "panel-footer" ]
             [ textarea [ class "form-control", id "msg-input", placeholder "Comment...", attribute "rows" "3" ]
                 []
             , button [ class "btn btn-primary form-control", id "msg-submit", type' "submit" ]
                 [ text "Post" ]
             ]
-        , div [] [ text (toString model) ]
+        , div [] [ text (toString { text = model.text, annots = model.annots }) ]
+        ]
+
+
+make2Digit : Int -> String
+make2Digit n =
+    if n >= 10 then
+        toString n
+    else
+        "0" ++ toString n
+
+
+mmss : Int -> String
+mmss time =
+    let
+        t =
+            time // 1000
+
+        min =
+            t // 60
+
+        sec =
+            t % 60
+    in
+        (make2Digit min) ++ ":" ++ (make2Digit sec)
+
+
+annotView : Annot -> Html Msg
+annotView annot =
+    div []
+        [ a [ onClick (Clicked annot) ]
+            [ text ("[" ++ (mmss annot.at) ++ "] ")
+            , b [] [ text annot.name ]
+            , text (": " ++ annot.text)
+            ]
         ]
 
 
