@@ -1,4 +1,6 @@
 # App artifacts
+/web/elm/elm-stuff
+/web/static/vendor
 /_build
 /db
 /deps
