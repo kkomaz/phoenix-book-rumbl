@@ -2,17 +2,24 @@ port module AnnotPane exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (..)
+
+
+-- import Html.Events exposing (..)
+
 import Html.App as App
 import Time
+import Phoenix.Socket
 
 
+-- import Phoenix.Channel
+-- import Phoenix.Push
 -- model
 
 
 type alias Model =
     { annots : List Annot
     , inputMessage : String
+    , phxSocket : Phoenix.Socket.Socket Msg
     }
 
 
@@ -25,7 +32,12 @@ type alias Annot =
 
 initModel : ( Model, Cmd Msg )
 initModel =
-    ( Model [] "", Cmd.none )
+    ( Model
+        []
+        ""
+        (Phoenix.Socket.init "ws://localhost:4000/socket/websocket")
+    , Cmd.none
+    )
 
 
 
@@ -37,6 +49,9 @@ type Msg
     | Post String
     | Timeout Float
     | CurTime Int
+    | InitSocket String
+    | JoinChannel String
+    | PhoenixMsg (Phoenix.Socket.Msg Msg)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -49,14 +64,34 @@ update msg model =
             ( model, Cmd.none )
 
         Timeout time ->
-            Debug.log "Timeout" ( model, rewind (round time) )
+            -- Debug.log "Timeout" ( model, rewind (round time) )
+            ( model, rewind (round time) )
 
         CurTime time ->
+            -- let
+            --     log =
+            --         Debug.log "time" time
+            -- in
+            ( model, Cmd.none )
+
+        InitSocket path ->
+            ( { model
+                | phxSocket = (Phoenix.Socket.init path |> Phoenix.Socket.withDebug)
+              }
+            , Cmd.none
+            )
+
+        JoinChannel channel ->
+            ( model, Cmd.none )
+
+        PhoenixMsg msg ->
             let
-                log =
-                    Debug.log "time" time
+                ( socket, phxCmd ) =
+                    Phoenix.Socket.update msg model.phxSocket
             in
-                ( model, Cmd.none )
+                ( { model | phxSocket = socket }
+                , Cmd.map PhoenixMsg phxCmd
+                )
 
 
 
@@ -68,11 +103,19 @@ subscriptions model =
     Sub.batch
         [ Time.every Time.second Timeout
         , curTime CurTime
+        , initSocket InitSocket
+        , Phoenix.Socket.listen model.phxSocket PhoenixMsg
         ]
 
 
 
 -- port
+
+
+port initSocket : (String -> msg) -> Sub msg
+
+
+port joinChannel : (String -> msg) -> Sub msg
 
 
 port rewind : Int -> Cmd msg

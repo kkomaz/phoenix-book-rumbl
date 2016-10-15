@@ -24,8 +24,9 @@ const helloApp = Elm.Hello.embed(helloDiv)
 const annotDiv = document.getElementById('elm-container')
 if (annotDiv) {
   var annot = Elm.AnnotPane.embed(annotDiv)
+  annot.ports.initSocket.send(`ws://localhost:4000/socket/websocket?token=${window.userToken}`)
   annot.ports.rewind.subscribe(time => {
-    console.log(`Rewind to : ${time}`)
+    // console.log(`Rewind to : ${time}`)
     annot.ports.curTime.send(time)
   })
 }
