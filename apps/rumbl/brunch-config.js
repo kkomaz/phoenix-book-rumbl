@@ -59,7 +59,7 @@ exports.config = {
     elmBrunch: {
       // executablePath: './node_modules/elm/binwrappers',
       elmFolder: "web/elm",
-      mainModules: ["Hello.elm"],
+      mainModules: ["Hello.elm", "AnnotPane.elm"],
       outputFolder: "../static/vendor"
     }
   },

@@ -5,10 +5,12 @@
       data: [id: @video.id, player_id: player_id(@video)] do %>
     <% end %>
   </div>
-  <div class="col-sm-5">
+</div>
+<div class="row">
+  <div class="col-sm-6">
     <div class="panel panel-default">
       <div class="panel-heading">
-        <h3 class="panel-title">Annotations</h3>
+        <h3 class="panel-title">Annotations - JS</h3>
       </div>
       <div id="msg-container" class="panel-body annotations">
       </div>
@@ -17,5 +19,7 @@
         <button id="msg-submit" class="btn btn-primary form-control" type="submit">Post</button>
       </div>
     </div>
+  </div>
+  <div id="elm-container" class="col-sm-6">
   </div>
 </div>
