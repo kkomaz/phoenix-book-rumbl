@@ -23,7 +23,10 @@ const helloApp = Elm.Hello.embed(helloDiv)
 
 const annotDiv = document.getElementById('elm-container')
 if (annotDiv) {
-  Elm.AnnotPane.embed(annotDiv)
+  var annot = Elm.AnnotPane.embed(annotDiv)
+  annot.ports.rewind.subscribe(time => {
+    console.log(`Rewind to : ${time}`)
+  })
 }
 
 // Import local files
