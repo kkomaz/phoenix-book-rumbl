@@ -26,6 +26,7 @@ if (annotDiv) {
   var annot = Elm.AnnotPane.embed(annotDiv)
   annot.ports.rewind.subscribe(time => {
     console.log(`Rewind to : ${time}`)
+    annot.ports.curTime.send(time)
   })
 }
 

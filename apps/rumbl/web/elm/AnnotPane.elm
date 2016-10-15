@@ -36,6 +36,7 @@ type Msg
     = Received Annot
     | Post String
     | Timeout Float
+    | CurTime Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -50,6 +51,13 @@ update msg model =
         Timeout time ->
             Debug.log "Timeout" ( model, rewind (round time) )
 
+        CurTime time ->
+            let
+                log =
+                    Debug.log "time" time
+            in
+                ( model, Cmd.none )
+
 
 
 -- subscription
@@ -57,7 +65,10 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every Time.second Timeout
+    Sub.batch
+        [ Time.every Time.second Timeout
+        , curTime CurTime
+        ]
 
 
 
@@ -65,6 +76,9 @@ subscriptions model =
 
 
 port rewind : Int -> Cmd msg
+
+
+port curTime : (Int -> msg) -> Sub msg
 
 
 
