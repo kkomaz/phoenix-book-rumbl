@@ -16,7 +16,8 @@ import "phoenix_html"
 import socket from "./socket"
 import Video from "./video"
 
-Video.init(socket, document.getElementById("video"))
+var videoElement = document.getElementById("video")
+Video.init(socket, videoElement)
 
 const helloDiv = document.getElementById('elm-hello')
 const helloApp = Elm.Hello.embed(helloDiv)
@@ -25,6 +26,10 @@ const annotDiv = document.getElementById('elm-container')
 if (annotDiv) {
   var annot = Elm.AnnotPane.embed(annotDiv)
   annot.ports.initSocket.send(`ws://localhost:4000/socket/websocket?token=${window.userToken}`)
+
+  let videoId = videoElement.getAttribute("data-id")
+  annot.ports.joinChannel.send(`videos:${videoId}`)
+  
   annot.ports.rewind.subscribe(time => {
     // console.log(`Rewind to : ${time}`)
     annot.ports.curTime.send(time)
