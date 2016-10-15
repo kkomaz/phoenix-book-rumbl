@@ -21,6 +21,11 @@ Video.init(socket, document.getElementById("video"))
 const helloDiv = document.getElementById('elm-hello')
 const helloApp = Elm.Hello.embed(helloDiv)
 
+const annotDiv = document.getElementById('elm-container')
+if (annotDiv) {
+  Elm.AnnotPane.embed(annotDiv)
+}
+
 // Import local files
 //
 // Local files can be imported directly using relative
