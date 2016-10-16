@@ -72,7 +72,7 @@ update msg model =
             ( { model | annots = (annot :: model.annots) }, Cmd.none )
 
         Clicked annot ->
-            ( model, Cmd.none )
+            ( model, seek annot.at )
 
         InputText text ->
             ( { model | text = text }, Cmd.none )
