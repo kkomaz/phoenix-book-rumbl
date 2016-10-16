@@ -7,10 +7,7 @@ import Html.App as App
 import Time
 import Phoenix.Socket as PSocket
 import Phoenix.Channel as PChannel
-
-
--- import Phoenix.Push
-
+import Phoenix.Push as PPush
 import Json.Encode as JE
 import Json.Decode as JD exposing ((:=))
 
@@ -23,11 +20,13 @@ type alias Model =
     , playtime : Int
     , text : String
     , phxSocket : PSocket.Socket Msg
+    , chId : String
     }
 
 
 type alias Annot =
-    { at : Int
+    { id : Int
+    , at : Int
     , name : String
     , text : String
     }
@@ -40,6 +39,7 @@ initModel =
         0
         ""
         (PSocket.init "ws://localhost:4000/socket/websocket")
+        ""
     , Cmd.none
     )
 
@@ -52,7 +52,8 @@ type Msg
     = Received (List Annot)
     | ReceivedOne Annot
     | Clicked Annot
-    | Post String
+    | InputText String
+    | Post
     | Timer
     | Playtime Int
     | InitSocket String
@@ -65,17 +66,32 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Received annots ->
-            ( { model | annots = List.sortBy (\a -> a.at) annots }, Cmd.none )
+            ( { model | annots = annots }, Cmd.none )
 
         ReceivedOne annot ->
-            ( { model | annots = List.sortBy (\a -> a.at) (annot :: model.annots) }, Cmd.none )
+            ( { model | annots = (annot :: model.annots) }, Cmd.none )
 
         Clicked annot ->
             ( model, Cmd.none )
 
-        Post text ->
-            ( model, Cmd.none )
+        InputText text ->
+            ( { model | text = text }, Cmd.none )
 
+        Post ->
+            let
+                payload =
+                    (JE.object [ ( "body", JE.string model.text ), ( "at", JE.int model.playtime ) ])
+
+                push =
+                    PPush.init "new_annotation" model.chId |> PPush.withPayload payload
+
+                ( phxSocket, phxCmd ) =
+                    PSocket.push push model.phxSocket
+            in
+                ( { model | phxSocket = phxSocket, text = "" }, Cmd.map PhoenixMsg phxCmd )
+
+        -- let payload = {body: msgInput.value, at: Player.getCurrentTime()}
+        -- vidChannel.push("new_annotation", payload)
         Timer ->
             ( model, reportPlaytime {} )
 
@@ -104,7 +120,7 @@ update msg model =
                 ( socket, phxCmd ) =
                     PSocket.join pChannel pSocket
             in
-                ( { model | phxSocket = socket }
+                ( { model | phxSocket = socket, chId = channel }
                 , Cmd.map PhoenixMsg phxCmd
                 )
 
@@ -148,7 +164,7 @@ decodeJoin =
 
 decodeAnnot : JD.Decoder Annot
 decodeAnnot =
-    JD.object3 Annot ("at" := JD.int) (JD.at [ "user", "username" ] JD.string) ("body" := JD.string)
+    JD.object4 Annot ("id" := JD.int) ("at" := JD.int) (JD.at [ "user", "username" ] JD.string) ("body" := JD.string)
 
 
 
@@ -195,24 +211,29 @@ port playtime : (Int -> msg) -> Sub msg
 
 view : Model -> Html Msg
 view model =
-    div [ class "panel panel-default" ]
-        [ div [ class "panel-heading" ]
-            [ h3 [ class "panel-title" ]
-                [ text "Annotations" ]
+    let
+        annots =
+            List.sortBy (\a -> ( a.at, a.id )) model.annots
+                |> List.filter (\a -> a.at <= model.playtime)
+    in
+        div [ class "panel panel-default" ]
+            [ div [ class "panel-heading" ]
+                [ h3 [ class "panel-title" ]
+                    [ text "Annotations - Elm" ]
+                ]
+            , div [ class "panel-body annotations", id "msg-container" ]
+                (List.map
+                    annotView
+                    annots
+                )
+            , div [ class "panel-footer" ]
+                [ textarea [ onInput InputText, value model.text, class "form-control", id "msg-input", placeholder "Comment...", attribute "rows" "3" ]
+                    []
+                , button [ onClick Post, class "btn btn-primary form-control", id "msg-submit", type' "submit" ]
+                    [ text "Post" ]
+                ]
+              -- , div [] [ text (toString { text = model.text, annots = model.annots }) ]
             ]
-        , div [ class "panel-body annotations", id "msg-container" ]
-            (List.map
-                annotView
-                (List.filter (\a -> a.at < model.playtime) model.annots)
-            )
-        , div [ class "panel-footer" ]
-            [ textarea [ class "form-control", id "msg-input", placeholder "Comment...", attribute "rows" "3" ]
-                []
-            , button [ class "btn btn-primary form-control", id "msg-submit", type' "submit" ]
-                [ text "Post" ]
-            ]
-        , div [] [ text (toString { text = model.text, annots = model.annots }) ]
-        ]
 
 
 make2Digit : Int -> String
