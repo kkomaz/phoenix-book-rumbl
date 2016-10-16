@@ -31,10 +31,14 @@ if (annotDiv) {
   let videoId = videoElement.getAttribute("data-id")
   annot.ports.joinChannel.send(`videos:${videoId}`)
 
-  annot.ports.reportPlaytime.subscribe(time => {
+  annot.ports.reportPlaytime.subscribe(_ => {
     if (Player.player && Player.player.getCurrentTime) {
       annot.ports.playtime.send(Player.getCurrentTime())
     }
+  })
+
+  annot.ports.seek.subscribe(time => {
+    Player.seekTo(time)
   })
 }
 
