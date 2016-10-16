@@ -15,6 +15,7 @@ import "phoenix_html"
 
 import socket from "./socket"
 import Video from "./video"
+import Player from "./player"
 
 var videoElement = document.getElementById("video")
 Video.init(socket, videoElement)
@@ -29,10 +30,11 @@ if (annotDiv) {
 
   let videoId = videoElement.getAttribute("data-id")
   annot.ports.joinChannel.send(`videos:${videoId}`)
-  
-  annot.ports.rewind.subscribe(time => {
-    // console.log(`Rewind to : ${time}`)
-    annot.ports.curTime.send(time)
+
+  annot.ports.reportPlaytime.subscribe(time => {
+    if (Player.player && Player.player.getCurrentTime) {
+      annot.ports.playtime.send(Player.getCurrentTime())
+    }
   })
 }
 
