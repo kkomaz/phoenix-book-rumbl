@@ -20,6 +20,7 @@ import Json.Decode as JD exposing ((:=))
 
 type alias Model =
     { annots : List Annot
+    , playtime : Int
     , text : String
     , phxSocket : PSocket.Socket Msg
     }
@@ -36,6 +37,7 @@ initModel : ( Model, Cmd Msg )
 initModel =
     ( Model
         []
+        0
         ""
         (PSocket.init "ws://localhost:4000/socket/websocket")
     , Cmd.none
@@ -51,8 +53,8 @@ type Msg
     | ReceivedOne Annot
     | Clicked Annot
     | Post String
-    | Timeout Float
-    | CurTime Int
+    | Timer
+    | Playtime Int
     | InitSocket String
     | JoinChannel String
     | PhoenixMsg (PSocket.Msg Msg)
@@ -63,10 +65,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Received annots ->
-            ( { model | annots = annots }, Cmd.none )
+            ( { model | annots = List.sortBy (\a -> a.at) annots }, Cmd.none )
 
         ReceivedOne annot ->
-            ( { model | annots = annot :: model.annots }, Cmd.none )
+            ( { model | annots = List.sortBy (\a -> a.at) (annot :: model.annots) }, Cmd.none )
 
         Clicked annot ->
             ( model, Cmd.none )
@@ -74,16 +76,11 @@ update msg model =
         Post text ->
             ( model, Cmd.none )
 
-        Timeout time ->
-            -- Debug.log "Timeout" ( model, rewind (round time) )
-            ( model, rewind (round time) )
+        Timer ->
+            ( model, reportPlaytime {} )
 
-        CurTime time ->
-            -- let
-            --     log =
-            --         Debug.log "time" time
-            -- in
-            ( model, Cmd.none )
+        Playtime time ->
+            ( { model | playtime = (Debug.log "Playtime" time) }, Cmd.none )
 
         InitSocket path ->
             ( { model
@@ -161,16 +158,26 @@ decodeAnnot =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Time.every Time.second Timeout
-        , curTime CurTime
+        [ Time.every Time.second (always Timer)
         , initSocket InitSocket
         , joinChannel JoinChannel
+        , playtime Playtime
         , PSocket.listen model.phxSocket PhoenixMsg
         ]
 
 
 
--- port
+-- Cmd port
+
+
+port reportPlaytime : {} -> Cmd msg
+
+
+port seek : Int -> Cmd msg
+
+
+
+-- Sub port
 
 
 port initSocket : (String -> msg) -> Sub msg
@@ -179,10 +186,7 @@ port initSocket : (String -> msg) -> Sub msg
 port joinChannel : (String -> msg) -> Sub msg
 
 
-port rewind : Int -> Cmd msg
-
-
-port curTime : (Int -> msg) -> Sub msg
+port playtime : (Int -> msg) -> Sub msg
 
 
 
@@ -199,7 +203,7 @@ view model =
         , div [ class "panel-body annotations", id "msg-container" ]
             (List.map
                 annotView
-                model.annots
+                (List.filter (\a -> a.at < model.playtime) model.annots)
             )
         , div [ class "panel-footer" ]
             [ textarea [ class "form-control", id "msg-input", placeholder "Comment...", attribute "rows" "3" ]
