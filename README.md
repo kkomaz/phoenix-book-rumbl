@@ -14,6 +14,6 @@ This repo is updated version of that for Elixir 1.3.0 and Phoenix 1.2.1, and
 
 $ mix deps.get
 $ (cd apps/rumbl; npm install; cd ../..)
-$ mix phoenix server
+$ mix phoenix.server
 
 ```
